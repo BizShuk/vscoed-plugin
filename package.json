@@ -1,0 +1,154 @@
+{
+  "name": "vscode-plugin-experiment",
+  "displayName": "VSCode Plugin Experiment",
+  "description": "Multi-feature VSCode extension experiment: Log Doctor (LLM-powered diagnostic fixer)",
+  "version": "0.3.0",
+  "publisher": "shuk",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BizShuk/vscode-plugin-experiment"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onCommand:logDoctor.fixWorkspace",
+    "onCommand:logDoctor.setApiKey",
+    "onCommand:logDoctor.showOutput",
+    "onCommand:logDoctor.publish"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "logDoctor.fixWorkspace",
+        "title": "Log Doctor: Fix Workspace Issues"
+      },
+      {
+        "command": "logDoctor.setApiKey",
+        "title": "Log Doctor: Set API Key"
+      },
+      {
+        "command": "logDoctor.showOutput",
+        "title": "Log Doctor: Show Output Channel"
+      }
+    ],
+    "configuration": {
+      "title": "Log Doctor",
+      "properties": {
+        "logDoctor.provider": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "openai"
+          ],
+          "default": "claude",
+          "description": "Which LLM provider to call."
+        },
+        "logDoctor.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-6",
+          "description": "Model ID passed to the provider. Defaults to a reasonable Claude model; override for OpenAI."
+        },
+        "logDoctor.autoApplySources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "eslint",
+            "prettier",
+            "ruff",
+            "gofmt",
+            "stylelint"
+          ],
+          "description": "Diagnostic sources treated as low-risk and eligible for auto-apply."
+        },
+        "logDoctor.autoApplyMaxLines": {
+          "type": "number",
+          "default": 3,
+          "description": "Maximum lines a low-risk patch may add/remove; patches beyond this need confirmation."
+        },
+        "logDoctor.maxIssues": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of representative diagnostics enqueued per scan."
+        },
+        "logDoctor.cooldownMinutes": {
+          "type": "number",
+          "default": 30,
+          "description": "Minimum minutes between two actual fix applications."
+        },
+        "logDoctor.listeners": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Regex 規則,匹配外部 extension 推播到 `logDoctor.publish` 的訊息。命中時 append 到 **Log Doctor** channel;同源訊息在 cooldownMs 內會聚合顯示為 `(×N)`。",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "channel",
+              "pattern"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "description": "規則識別,fingerprint 與 dedup 用,必須唯一。"
+              },
+              "channel": {
+                "type": "string",
+                "description": "要訂閱的 channel 名,支援 glob (`*` 匹配任意字元,例如 `ESLint*`、`Jest*`)。"
+              },
+              "pattern": {
+                "type": "string",
+                "format": "regex",
+                "description": "regex 字串,匹配整行 `text`。支援完整 JS RegExp 語法;case-insensitive 請用字元 class(如 `[Ww]arning`)或 RegExp `i` flag。"
+              },
+              "label": {
+                "type": "string",
+                "description": "channel 顯示用 label。省略時用 id。"
+              },
+              "cooldownMs": {
+                "type": "number",
+                "minimum": 1000,
+                "default": 300000,
+                "description": "同 fingerprint 訊息聚合視窗(毫秒)。過期視為新事件。"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p . --noEmit && node esbuild.config.mjs",
+    "watch": "tsc -p . --noEmit --watch",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package",
+    "lint": "tsc -p . --noEmit"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "mocha": "^11.7.6",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "vsce": "^2.15.0",
+    "esbuild": "^0.21.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "openai": "^4.40.0"
+  }
+}

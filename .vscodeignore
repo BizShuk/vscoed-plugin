@@ -1,0 +1,36 @@
+# Dev / test files not needed in runtime VSIX
+test/
+out/test/
+src/test/
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+
+# Build artifacts not needed at runtime
+**/*.map
+**/*.tsbuildinfo
+
+# Build tooling & configs
+esbuild.config.mjs
+tsconfig.json
+vitest.config.ts
+vscode-test.config.mjs
+
+# Dependencies bundled inline by esbuild into out/src/extension.js
+node_modules/
+
+# Documentation & meta (LICENSE is REQUIRED by vsce, kept)
+docs/
+plans/
+AGENTS.md
+CLAUDE.md
+README.md
+readme.md
+README.*
+CHANGELOG.md
+
+# Source maps / dev-only dirs
+.vscode-test/
+.git/
+.github/
