@@ -1,7 +1,5 @@
 // esbuild.config.mjs
-// Bundle VSCode extension into a single CJS file.
-// Bundles @anthropic-ai/sdk and openai inline; marks `vscode` as external
-// because the VSCode Extension Host injects it as a global at runtime.
+// Bundle the Extension Host entry and Mermaid's browser-only webview entry.
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -16,6 +14,24 @@ await build({
   format: 'cjs',
   outfile: resolve(__dirname, 'out/src/extension.js'),
   external: ['vscode'],
+  sourcemap: false,
+  minify: true,
+  absWorkingDir: __dirname,
+  logLevel: 'info',
+});
+
+await build({
+  entryPoints: [
+    resolve(__dirname, 'mermaid_tui_preview/webview/index.mts'),
+  ],
+  bundle: true,
+  platform: 'browser',
+  target: 'chrome120',
+  format: 'iife',
+  outfile: resolve(
+    __dirname,
+    'out/mermaid_tui_preview/webview.js',
+  ),
   sourcemap: false,
   minify: true,
   absWorkingDir: __dirname,

@@ -1,0 +1,59 @@
+- generic [active] [ref=e1]:
+  - document [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e14]:
+        - paragraph [ref=e20]: 否 (No)
+        - paragraph [ref=e26]: OAuth 成功
+        - paragraph [ref=e32]: 失敗 (Failed)
+        - paragraph [ref=e38]: 是 (Yes)
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - paragraph [ref=e48]: 核心功能 (Core Features)
+          - generic [ref=e60]:
+            - paragraph [ref=e66]: 通過
+            - paragraph [ref=e72]: 不通過
+            - paragraph [ref=e78]: 是
+            - paragraph [ref=e84]: 否
+          - generic [ref=e85]:
+            - paragraph [ref=e92]:
+              - text: 儀表板
+              - text: (Dashboard)
+            - paragraph [ref=e99]:
+              - text: 檢視資料
+              - text: (View)
+            - paragraph [ref=e106]:
+              - text: 編輯資料
+              - text: (Edit)
+            - paragraph [ref=e113]:
+              - text: 刪除資料
+              - text: (Delete)
+            - paragraph [ref=e120]:
+              - text: 讀取快取
+              - text: (Cache)
+            - paragraph [ref=e127]:
+              - text: 驗證輸入?
+              - text: (Valid?)
+            - paragraph [ref=e134]:
+              - text: 資料庫
+              - text: (Database)
+            - paragraph [ref=e141]:
+              - text: 警告訊息
+              - text: (Warning)
+            - paragraph [ref=e148]:
+              - text: 確認刪除?
+              - text: (Confirm?)
+        - paragraph [ref=e157]: 開始 (Start)
+        - paragraph [ref=e164]:
+          - text: 已登入?
+          - text: (Authenticated?)
+        - paragraph [ref=e171]:
+          - text: 登入流程
+          - text: (Login Flow)
+        - paragraph [ref=e178]: 顯示錯誤
+        - paragraph [ref=e185]:
+          - text: 稽核日誌
+          - text: (Audit Log)
+        - paragraph [ref=e194]: 結束 (Done)
+  - button "−" [ref=e195]
+  - button "Reset" [ref=e196]
+  - button "+" [ref=e197]

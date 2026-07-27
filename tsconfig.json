@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "Node16",
     "moduleResolution": "Node16",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "outDir": "out",
     "rootDir": ".",
     "strict": true,
@@ -19,6 +19,13 @@
     "sourceMap": true,
     "declaration": false
   },
-  "include": ["src/**/*", "log_doctor/src/**/*", "log_doctor/test/**/*"],
+  "include": [
+    "src/**/*",
+    "log_doctor/src/**/*",
+    "log_doctor/test/**/*",
+    "mermaid_tui_preview/src/**/*",
+    "mermaid_tui_preview/test/**/*",
+    "mermaid_tui_preview/webview/**/*"
+  ],
   "exclude": ["node_modules", "out", ".vscode-test"]
 }

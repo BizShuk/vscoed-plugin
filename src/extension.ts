@@ -11,15 +11,13 @@
 
 import * as vscode from 'vscode';
 import { registerLogDoctor } from '../log_doctor/src/register';
+import { registerMermaidTuiPreview } from '../mermaid_tui_preview/src/register';
 
 export async function activate(context: vscode.ExtensionContext) {
   // 各 feature 註冊入口在此呼叫。每個 register 函式內部以 try/catch 包裹
   // init 邏輯,確保單一 feature 失敗不會讓整個擴充掛掉。
   await registerLogDoctor(context);
-
-  // 未來新增 feature 範例:
-  // await registerFormatter(context);
-  // await registerSnippetManager(context);
+  registerMermaidTuiPreview(context);
 }
 
 export function deactivate() {

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Mermaid Drag Fixture</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    #viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    #viewport.dragging {
+      cursor: grabbing;
+    }
+
+    #diagram {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #diagram svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+    }
+
+    #toolbar {
+      position: fixed;
+      z-index: 2;
+      top: 12px;
+      right: 12px;
+    }
+
+    #error {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewport" aria-label="Interactive Mermaid diagram">
+    <div id="diagram"></div>
+  </div>
+  <div id="toolbar">
+    <span>Left-drag to move · Scroll to zoom</span>
+    <button id="zoom-out" type="button">−</button>
+    <button id="reset" type="button">Reset</button>
+    <button id="zoom-in" type="button">+</button>
+  </div>
+  <pre id="error" role="alert"></pre>
+  <script id="mermaid-source" type="application/json">"flowchart TD\nU[User] --> G[Gateway]\nG --> A{Authorized?}\nA -->|Yes| S[Service]\nA -->|No| E[Error]\nS --> D[(Database)]"</script>
+  <script src="../../../out/mermaid_tui_preview/webview.js"></script>
+</body>
+</html>

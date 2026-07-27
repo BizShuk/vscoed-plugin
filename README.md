@@ -1,28 +1,27 @@
-# 視覺化工作室代碼套件實驗專案 (VS Code Extension Experiment Project)
+# VS Code 多功能套件實驗專案 (VS Code Extension Experiment)
 
-本專案是一個用於開發與實驗視覺化工作室代碼 (Visual Studio Code) 套件的儲存庫。本文件說明如何建置、安裝、解除安裝此套件，以及如何發佈至套件市集。
+本專案以單一 VS Code extension 承載多個獨立功能模組。目前包含自動診斷修復的
+`Log Doctor`，以及把 Codex／Claude 終端 TUI 或一般 Markdown 檔中的 Mermaid 圖
+轉成可點擊預覽的 `Mermaid TUI Preview`。
 
 ## 專案結構 (Project Structure)
 
-每個子資料夾為一個獨立插件功能測試。
+root `package.json` 是唯一的 extension manifest；各功能模組透過
+`register*()` 接到 root `src/extension.ts`，不各自建立 extension package。
 
 ```
 vscode-plugin-experiment/
-├── README.md                 # 本文件
-├── CLAUDE.md                 # 技術脈絡
-├── package.json              # 根層無意義，僅為子模組存在
-│
-├── log_doctor/               # [Plugin Feature 1] LLM 自動修復診斷
+├── package.json                  # 唯一 extension manifest 與 npm 入口
+├── src/extension.ts              # root orchestrator
+├── log_doctor/                   # LLM 診斷修復功能
 │   ├── src/
-│   │   ├── extension.ts      # 進入點與命令註冊
-│   │   ├── listener.ts       # regex 匹配 + 同源去重 (0.3.0+)
-│   │   ├── listenerHost.ts   # logDoctor.publish 命令處理
-│   │   ├── report.ts         # Output channel 報告器
-│   │   ├── providers/        # Claude / OpenAI provider 實作
-│   │   └── ...               # 收集、風控、修補、驗證模組
-│   └── package.json          # 擴充功能 manifest
-│
-└── plans/                    # 規劃文件存放區
+│   └── test/
+├── mermaid_tui_preview/          # Codex／Claude TUI Mermaid 互動式預覽
+│   ├── src/
+│   ├── test/
+│   ├── webview/
+│   └── CLAUDE.md
+└── docs/superpowers/plans/       # 跨模組實作計畫
 ```
 
 ## 插件功能測試索引 (Plugin Feature Index)
@@ -30,8 +29,70 @@ vscode-plugin-experiment/
 | # | 插件名稱 | 子資料夾 | 功能描述 | 狀態 |
 |---|----------|---------|---------|------|
 | 1 | Log Doctor | `log_doctor/` | 讀取 VSCode 診斷，以 LLM 自動修復 | ✅ Active |
+| 2 | Mermaid TUI Preview | `mermaid_tui_preview/` | 擷取 TUI 或 Markdown `mermaid` code block 並提供可拖曳預覽 | Experimental |
 
-> 未來新插件功能測試以此格式擴充：每個插件一個子資料夾，獨立 `package.json`、獨立建置流程。
+## Mermaid TUI Preview
+
+### 前置需求 (Prerequisites)
+
+- VS Code 或相容 IDE `1.93+`
+- integrated terminal 的 `shell integration` 已啟用（僅 TUI 偵測需要）
+
+### 使用流程 (Usage Flow)
+
+`````text
+Codex／Claude TUI raw output
+  → TerminalShellExecution.read()
+  → headless terminal 畫面重建
+  → Mermaid 區塊偵測
+  → terminal link
+  → 內建 Mermaid webview
+  → 左鍵拖曳／滾輪縮放
+
+一般 Markdown 檔：
+
+````text
+Markdown ```mermaid code block
+  → mermaid marker 的文件連結或 Markdown command
+  → 內建 Mermaid webview
+````
+`````
+
+1. 安裝本 extension 後重新載入 IDE。
+2. 在 integrated terminal 啟動 `codex`、`claudem`、`claude` 或
+   `claude-code`。
+3. 當回答出現 Mermaid 圖時：
+   - Codex／Claude TUI：按住 `Cmd` 並點擊 `flowchart`、
+     `sequenceDiagram` 等圖型指令。
+   - Claude TUI 額外顯示可點擊的 `mermaid` marker；Codex TUI 不顯示此 marker。
+   - 若同一個 terminal 有多張圖使用完全相同的 directive header，會先顯示圖表
+     選單；選取後才開啟預覽。
+4. 也可從 Command Palette 執行
+   `Mermaid TUI Preview: Open Latest Diagram`，開啟目前 terminal 最新偵測到的圖。
+5. 預覽開啟後，按住滑鼠左鍵拖曳圖表；使用滾輪或右上角按鈕進行 SVG
+   `viewBox` 縮放與重設。
+6. 一般 `.md` 檔可直接加入：
+
+   ````markdown
+   ```mermaid
+   flowchart TD
+     A[Start] --> B[Done]
+   ```
+   ````
+
+   點擊開頭的 `mermaid` 標記即可開啟預覽；也可將游標放在區塊內，執行
+   `Mermaid TUI Preview: Open Markdown Diagram`。
+
+`Codex 與 Claude 的顯示差異：`
+
+| TUI | 畫面上的起始行 | detector 路徑 |
+| --- | -------------- | ------------- |
+| Claude | `⏺ mermaid` | 由 marker 取得後續縮排區塊 |
+| Codex | `• flowchart TD` | 直接辨識 Mermaid 圖型指令 |
+
+此功能不回讀既有 terminal scrollback，只監聽 extension 啟動後、具備 shell
+integration 的新 command execution。技術細節見
+[mermaid_tui_preview/CLAUDE.md](./mermaid_tui_preview/CLAUDE.md)。
 
 ---
 
@@ -143,16 +204,23 @@ fingerprint = sha1(ruleId + '\n' + text.trim()).slice(0, 12)
 
 ```bash
 cd vscode-plugin-experiment
-npx @vscode/vsce package
+npm run package
 ```
 
-打包前確認 [package.json](./package.json) 已設定 `publisher`、`repository`、`license` 欄位，否則打包會失敗。成功後產生 `vscode-plugin-experiment-0.3.0.vsix`。
+`vscode:prepublish` 會先執行完整 build，避免把舊的 `out/src/extension.js`
+包進 VSIX。成功後產生 `vscode-plugin-experiment-0.4.0.vsix`。
 
 ### 安裝 (Install)
 
 ```bash
-agy-ide --install-extension vscode-plugin-experiment-0.3.0.vsix
+npm run install:antigravity
 ```
+
+安裝 task 只會安裝 `package.json` 對應的精確版本，不使用 `*.vsix`。完成後在
+Antigravity IDE 執行 `Developer: Reload Window`，再於 integrated terminal
+啟動新的 `codex`、`claudem`、`claude` 或 `claude-code` command；既有 TUI
+與 extension 啟動前的
+scrollback 不會被回溯擷取。
 
 ### 解除安裝 (Uninstall)
 
@@ -181,7 +249,7 @@ agy-ide --uninstall-extension shuk.vscode-plugin-experiment
 - 步驟 `C`: 使用套件發佈工具進行發佈：
 
     ```bash
-    npx ovsx publish vscode-plugin-experiment-0.3.0.vsix -t <your-openvsix-token>
+    npx ovsx publish vscode-plugin-experiment-0.4.0.vsix -t <your-openvsix-token>
     ```
 
     或者可以登入後發佈：

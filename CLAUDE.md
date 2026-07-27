@@ -8,17 +8,20 @@
 
 ```bash
 npm install         # 安裝 root devDependencies (@types/vscode、esbuild、vitest 等)
-npm run build       # tsc --noEmit (型別檢查) + esbuild bundle → out/src/extension.js
-npm run package     # vsce package → vscode-plugin-experiment-0.3.0.vsix
-npm test            # vitest 從 log_doctor/test/ 抓 15 個 *.test.ts 跑單元測試
+npm run build       # 型別檢查 + Extension Host 與 Mermaid webview 兩個 esbuild bundle
+npm run package     # build + vsce package → vscode-plugin-experiment-0.4.0.vsix
+npm run install:antigravity # build + package + 安裝精確版本的 VSIX
+npm test            # vitest 執行 log_doctor/test/ 與 mermaid_tui_preview/test/
 npm run typecheck   # 純型別檢查,不解釋
 ```
 
 ### VSCode extension bundling with esbuild (esbuild 打包)
 
-esbuild 以 root `src/extension.ts` 為入口,把 TypeScript 連同各 feature 的依賴 (例如 `log_doctor` 的 `@anthropic-ai/sdk`、`openai`) 打包成單檔 CJS (`out/src/extension.js`),並把 `vscode` 標為 `external` (Extension Host runtime 注入)。好處:
+esbuild 產生兩個 runtime bundle：root `src/extension.ts` 打包成 Extension Host
+CJS (`out/src/extension.js`)，`mermaid_tui_preview/webview/index.mts` 打包成 browser
+IIFE (`out/mermaid_tui_preview/webview.js`)。Extension Host bundle 把 `vscode` 標為
+`external`，webview bundle 則把 Mermaid renderer inline。
 
-- VSIX 從多 MB 降到 sub-200 KB (94% 縮減)
 - 根本避免 `.vscodeignore` 排除 `node_modules/` 造成的 `Cannot find module` 啟動錯誤
 - 沒有 runtime 外部依賴,安裝即用
 
@@ -28,7 +31,7 @@ esbuild 以 root `src/extension.ts` 為入口,把 TypeScript 連同各 feature �
 | ---------- | ------------ | --------------------------------------------------------------------------- |
 | `external` | `['vscode']` | 保留 Extension Host 注入的全域 API,否則會 bundle 一個 stub 導致 runtime 炸 |
 | `bundle`   | `true`       | 把 `node_modules/` 內的依賴全部 inline 進單檔                               |
-| `target`   | `node18`     | 對應 VSCode 1.85+ 的 Electron Node 版本                                     |
+| `target`   | `node18` / `chrome120` | 分別對應 Extension Host 與 webview runtime                         |
 
 參考實作: [esbuild.config.mjs](./esbuild.config.mjs)。更多 esbuild + dedup 演算法細節見 [log_doctor/CLAUDE.md](./log_doctor/CLAUDE.md) 的 `建置` 與 `Listener 同源去重演算法` 段落。
 
@@ -55,32 +58,37 @@ vscode-plugin-experiment/
 ├── package.json              # root VSCode extension manifest + npm 入口
 ├── src/                      # root Extension Host 進入點 (orchestrator)
 │   └── extension.ts          # export activate/deactivate;呼叫各 feature 的 register*
-├── tsconfig.json             # include: src/**, log_doctor/src/**, log_doctor/test/**
-├── esbuild.config.mjs        # entryPoints: src/extension.ts
-├── vitest.config.ts          # include: log_doctor/test/**/*.test.ts
+├── package-lock.json         # npm dependency lock
+├── scripts/
+│   └── install-antigravity-extension.sh # build/package/install 單一路徑
+├── tsconfig.json             # include root 與所有 feature 的 src/test
+├── esbuild.config.mjs        # Extension Host + Mermaid webview entry points
+├── vitest.config.ts          # include: log_doctor/test/**, mermaid_tui_preview/test/**
 ├── .vscodeignore             # 排除 test/、docs/、plans/、build artifacts
 │
 ├── docs/                     # 跨模組設計文件 (如 superpowers/)
-├── plans/                    # 跨模組規劃文件 (預留,目前為空)
+│   └── terminology.md        # 領域術語的單一定義來源
+├── plans/                    # 跨模組歷史規劃文件
 │
-└── log_doctor/               # [Plugin Feature 1] LLM 自動修復診斷 (sub-feature)
-    ├── CLAUDE.md             # log_doctor 內部技術脈絡
-    ├── src/                  # 原始碼 (15 個 .ts + providers/ 子資料夾)
-    │   ├── register.ts       # 對外註冊入口:registerLogDoctor(context)
-    │   ├── listener.ts       # regex 匹配 + 同源去重
-    │   ├── listenerHost.ts   # logDoctor.publish 命令承載點
-    │   ├── report.ts         # Output channel 報告器
-    │   ├── providers/        # LLM provider 實作 (claude / openai / factory)
-    │   └── ...               # 收集、風控、修補、驗證模組
-    ├── test/                 # Vitest 測試 (15 檔案 / 對應每個 src 模組)
-    └── plans/                # log_doctor 規劃文件 (5 個歷史計畫)
+├── log_doctor/               # [Plugin Feature 1] LLM 自動修復診斷 (sub-feature)
+│   ├── CLAUDE.md
+│   ├── src/
+│   ├── test/
+│   └── plans/
+│
+└── mermaid_tui_preview/      # [Plugin Feature 2] TUI／Markdown Mermaid 互動式預覽
+    ├── CLAUDE.md             # mermaid_tui_preview 內部技術脈絡
+    ├── src/                  # capture/detector/store/link/dimensions/panel/viewport/register
+    ├── test/                 # ANSI、detector、store、drag 與 webview 測試
+    └── webview/              # browser entry，負責 Mermaid render 與 pointer event
 ```
 
 ## 插件功能測試索引 (Plugin Feature Index)
 
 | # | 插件名稱 | 子資料夾 | 功能描述 | 狀態 |
 |---|----------|---------|---------|------|
-| 1 | Log Doctor | `log_doctor/` | 讀取 VSCode 診斷,以 LLM 自動修復 | ✅ Active (0.3.0) |
+| 1 | Log Doctor | `log_doctor/` | 讀取 VSCode 診斷,以 LLM 自動修復 | ✅ Active |
+| 2 | Mermaid TUI Preview | `mermaid_tui_preview/` | 監聽 TUI 或 Markdown `mermaid` block 並開啟可拖曳 webview | Experimental |
 
 > 未來新插件功能測試以此格式擴充,見下方 SOP。
 
@@ -93,7 +101,7 @@ vscode-plugin-experiment/
 ### Step 1: 建立子資料夾骨架
 
 ```bash
-cd /Users/shuk/projects/playground/vscode-plugin-experiment
+cd /Users/shuk/projects/tools/vscoed-plugin
 mkdir -p <feature_name>/src <feature_name>/test <feature_name>/plans
 ```
 
@@ -163,7 +171,8 @@ export async function activate(context: vscode.ExtensionContext) {
 +    include: ['log_doctor/test/**/*.test.ts', '<feature_name>/test/**/*.test.ts'],
 ```
 
-`esbuild.config.mjs` **不需要改** — 單一 entry point (`src/extension.ts`),所有 feature 的程式碼在 bundling 時被遞歸 inline 進 `out/src/extension.js`。
+一般 Extension Host feature 不需修改 `esbuild.config.mjs`；若 feature 新增獨立
+webview browser entry，必須增加對應 build entry 與 `out/` 產物。
 
 ### Step 6: 更新文件
 
@@ -179,6 +188,7 @@ npm run typecheck   # tsc 應能編譯新 feature 的程式碼
 npm test            # vitest 應能跑到新 feature 的測試
 npm run build       # esbuild 從 src/extension.ts bundle 應包含新 feature
 npm run package     # vsce 應能產出包含新功能命令的 VSIX
+npm run install:antigravity # 精確安裝 package.json 對應版本；完成後 Reload Window
 ```
 
 ---

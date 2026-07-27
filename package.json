@@ -1,8 +1,8 @@
 {
   "name": "vscode-plugin-experiment",
   "displayName": "VSCode Plugin Experiment",
-  "description": "Multi-feature VSCode extension experiment: Log Doctor (LLM-powered diagnostic fixer)",
-  "version": "0.3.0",
+  "description": "Multi-feature VSCode extension experiment: Log Doctor and Mermaid TUI Preview",
+  "version": "0.4.0",
   "publisher": "shuk",
   "license": "Apache-2.0",
   "repository": {
@@ -10,17 +10,20 @@
     "url": "https://github.com/BizShuk/vscode-plugin-experiment"
   },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "Other"
   ],
   "main": "./out/src/extension.js",
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:logDoctor.fixWorkspace",
     "onCommand:logDoctor.setApiKey",
     "onCommand:logDoctor.showOutput",
-    "onCommand:logDoctor.publish"
+    "onCommand:logDoctor.publish",
+    "onCommand:mermaidTuiPreview.openLatest",
+    "onCommand:mermaidTuiPreview.openMarkdown"
   ],
   "contributes": {
     "commands": [
@@ -35,6 +38,14 @@
       {
         "command": "logDoctor.showOutput",
         "title": "Log Doctor: Show Output Channel"
+      },
+      {
+        "command": "mermaidTuiPreview.openLatest",
+        "title": "Mermaid TUI Preview: Open Latest Diagram"
+      },
+      {
+        "command": "mermaidTuiPreview.openMarkdown",
+        "title": "Mermaid TUI Preview: Open Markdown Diagram"
       }
     ],
     "configuration": {
@@ -127,28 +138,33 @@
     }
   },
   "scripts": {
-    "build": "tsc -p . --noEmit && node esbuild.config.mjs",
+    "clean": "rm -f *.vsix",
+    "vscode:prepublish": "npm run build",
+    "build": "npm run clean && npm install && tsc -p . --noEmit && node esbuild.config.mjs",
     "watch": "tsc -p . --noEmit --watch",
     "typecheck": "tsc -p . --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "package": "vsce package",
+    "install:antigravity": "bash scripts/install-antigravity-extension.sh",
     "lint": "tsc -p . --noEmit"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.11.0",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.93.0",
     "@vscode/test-electron": "^2.3.0",
+    "esbuild": "^0.21.0",
     "mocha": "^11.7.6",
     "typescript": "^5.4.0",
     "vitest": "^1.4.0",
-    "vsce": "^2.15.0",
-    "esbuild": "^0.21.0"
+    "vsce": "^2.15.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
+    "@xterm/headless": "^5.5.0",
+    "mermaid": "^11.16.0",
     "openai": "^4.40.0"
   }
 }

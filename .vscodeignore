@@ -1,11 +1,14 @@
 # Dev / test files not needed in runtime VSIX
 test/
+**/test/**
 out/test/
 src/test/
 **/*.test.ts
 **/*.test.js
 **/*.spec.ts
 **/*.spec.js
+**/*.ts
+**/*.mts
 
 # Build artifacts not needed at runtime
 **/*.map
@@ -23,14 +26,19 @@ node_modules/
 # Documentation & meta (LICENSE is REQUIRED by vsce, kept)
 docs/
 plans/
+**/plans/
 AGENTS.md
 CLAUDE.md
+**/CLAUDE.md
 README.md
 readme.md
 README.*
 CHANGELOG.md
 
 # Source maps / dev-only dirs
+.vscode/
 .vscode-test/
+.git
 .git/
 .github/
+package-lock.json
