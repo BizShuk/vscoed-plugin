@@ -19,6 +19,24 @@ describe('createMermaidPreviewHTML', () => {
     expect(html).not.toContain('</script><script>bad()</script>');
   });
 
+  it('preserves Mermaid label markup in the embedded source', () => {
+    const source =
+      'flowchart LR\nA["資料庫<br/>(Database)"] --> B';
+    const html = createMermaidPreviewHTML({
+      source,
+      scriptURI: 'webview.js',
+      cspSource: 'self',
+      nonce: 'nonce',
+    });
+    const embedded =
+      /<script id="mermaid-source" type="application\/json">([\s\S]*?)<\/script>/.exec(
+        html,
+      )?.[1];
+
+    expect(embedded).toBeDefined();
+    expect(JSON.parse(embedded ?? '""')).toBe(source);
+  });
+
   it('documents the default left-drag interaction in the preview', () => {
     const html = createMermaidPreviewHTML({
       source: 'flowchart TD\nA --> B',

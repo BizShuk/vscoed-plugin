@@ -191,4 +191,38 @@ describe('findMermaidDirectiveInLine', () => {
       length: 15,
     });
   });
+
+  it.each([
+    'classDiagram-v2',
+    'flowchart-elk',
+    'swimlane-beta',
+    'info',
+    'xychart',
+    'requirement',
+    'sankey',
+    'packet',
+    'block',
+    'treeView-beta',
+    'architecture',
+    'eventmodeling',
+    'ishikawa-beta',
+    'venn-beta',
+    'treemap',
+    'wardley-beta',
+    'cynefin-beta',
+    'railroad-beta',
+    'railroad-ebnf-beta',
+    'railroad-abnf-beta',
+    'railroad-peg-beta',
+  ])('recognizes the bundled Mermaid header %s', (header) => {
+    expect(findMermaidDirectiveInLine(`• ${header}`)).toEqual({
+      directive: header,
+      startIndex: 2,
+      length: header.length,
+    });
+  });
+
+  it('ignores diagram types that are not bundled with the preview', () => {
+    expect(findMermaidDirectiveInLine('• zenuml')).toBeUndefined();
+  });
 });

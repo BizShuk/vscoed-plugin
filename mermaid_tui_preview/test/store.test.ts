@@ -11,7 +11,7 @@ function diagram(
 }
 
 describe('MermaidDiagramStore', () => {
-  it('keeps distinct diagram ids side-by-side per terminal', () => {
+  it('keeps distinct diagram types side-by-side per terminal', () => {
     const terminal = {};
     const store = new MermaidDiagramStore<object>();
     const flowchartTb = diagram('flowchart TD\nA --> B');
@@ -26,7 +26,7 @@ describe('MermaidDiagramStore', () => {
     expect(store.entries(terminal)).toEqual([flowchartTb, sequence]);
   });
 
-  it('overwrites only the slot whose id matches', () => {
+  it('replaces an earlier partial render without removing other diagrams', () => {
     const terminal = {};
     const store = new MermaidDiagramStore<object>();
     const firstTb = diagram('flowchart TD\nA --> B');
@@ -50,15 +50,51 @@ describe('MermaidDiagramStore', () => {
     ).toBe('sequenceDiagram\nA->>B: Hi');
   });
 
-  it('falls back to the directive name when no directive header is found', () => {
+  it('keeps different diagrams that use the same directive header', () => {
     const terminal = {};
     const store = new MermaidDiagramStore<object>();
+    const first = diagram('flowchart LR\nA --> B');
+    const second = diagram('flowchart LR\nX --> Y');
 
-    store.record(terminal, [diagram('plain text without directive')]);
+    store.record(terminal, [first]);
+    store.record(terminal, [second]);
 
-    expect(store.entries(terminal)).toEqual([
-      diagram('plain text without directive'),
-    ]);
+    expect(store.entries(terminal)).toEqual([first, second]);
+    expect(
+      store.matchingDirective(terminal, 'flowchart', 'flowchart LR'),
+    ).toEqual([first, second]);
+  });
+
+  it('moves the most recently updated diagram to the end', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    const first = diagram('flowchart LR\nA --> B');
+    const sequence = diagram(
+      'sequenceDiagram\nA->>B: Hi',
+      'sequenceDiagram',
+    );
+    const updated = diagram('flowchart LR\nA --> B\nB --> C');
+
+    store.record(terminal, [first]);
+    store.record(terminal, [sequence]);
+    store.record(terminal, [updated]);
+
+    expect(store.entries(terminal)).toEqual([sequence, updated]);
+    expect(store.latest(terminal)).toEqual(updated);
+  });
+
+  it('keeps only the latest twenty diagrams per terminal', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    const diagrams = Array.from({ length: 21 }, (_, index) =>
+      diagram(`flowchart TD diagram-${index}\nA${index} --> B${index}`),
+    );
+
+    for (const item of diagrams) {
+      store.record(terminal, [item]);
+    }
+
+    expect(store.entries(terminal)).toEqual(diagrams.slice(1));
   });
 
   it('keeps terminals independent of each other', () => {
@@ -116,5 +152,63 @@ describe('MermaidDiagramStore', () => {
     store.clear(terminal);
 
     expect(store.latest(terminal)).toBeUndefined();
+  });
+});
+
+describe('terminal link resolution', () => {
+  it('links the Claude marker directly to the latest marked diagram', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    const first = diagram(
+      'flowchart TD\nA --> B',
+      'flowchart',
+      'mermaid',
+    );
+    const second = diagram(
+      'sequenceDiagram\nA->>B: Hi',
+      'sequenceDiagram',
+      'mermaid',
+    );
+    store.record(terminal, [first, second]);
+
+    expect(
+      store.resolveTerminalLink(terminal, '⏺ mermaid'),
+    ).toEqual({
+      startIndex: 2,
+      length: 7,
+      source: second.source,
+    });
+  });
+
+  it('links a directive directly to the latest diagram with that header', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    const first = diagram('flowchart TD\nA --> B');
+    const second = diagram('flowchart TD\nX --> Y');
+    store.record(terminal, [first, second]);
+
+    expect(
+      store.resolveTerminalLink(terminal, '• flowchart TD'),
+    ).toEqual({
+      startIndex: 2,
+      length: 9,
+      source: second.source,
+    });
+  });
+
+  it('does not link ordinary prose or uncaptured diagrams', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    store.record(terminal, [diagram('flowchart TD\nA --> B')]);
+
+    expect(
+      store.resolveTerminalLink(
+        terminal,
+        'The flowchart TD syntax is useful.',
+      ),
+    ).toBeUndefined();
+    expect(
+      store.resolveTerminalLink({}, '• flowchart TD'),
+    ).toBeUndefined();
   });
 });

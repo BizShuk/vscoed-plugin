@@ -1,19 +1,16 @@
 import * as vscode from 'vscode';
-import { captureMermaidStream } from './capture';
-import { isSupportedTuiCommand } from './commands';
-import { resolveTerminalLink } from './links';
-import {
-  openMermaidPreview,
-  type MermaidPreviewPort,
-} from './preview';
 import { MermaidPreviewPanel } from './panel';
 import {
   findMarkdownMermaidBlocks,
   selectMarkdownMermaidBlock,
 } from './markdown';
 import { MermaidDiagramStore } from './store';
-import { resolveTerminalDimensions } from './terminalDimensions';
-import { TerminalScreen } from './terminalScreen';
+import {
+  captureMermaidStream,
+  isSupportedTuiCommand,
+  resolveTerminalDimensions,
+  TerminalScreen,
+} from './terminal';
 
 const OPEN_LATEST_COMMAND = 'mermaidTuiPreview.openLatest';
 const OPEN_MARKDOWN_COMMAND = 'mermaidTuiPreview.openMarkdown';
@@ -21,15 +18,15 @@ const OPEN_SOURCE_COMMAND = 'mermaidTuiPreview.openSource';
 const CLEAR_ACTIVE_COMMAND = 'mermaidTuiPreview.clearActive';
 
 class MermaidTerminalLink extends vscode.TerminalLink {
-  readonly sources: readonly string[];
+  readonly source: string;
 
   constructor(
     startIndex: number,
     length: number,
-    sources: readonly string[],
+    source: string,
   ) {
     super(startIndex, length, 'Open with Mermaid Preview');
-    this.sources = sources;
+    this.source = source;
   }
 }
 
@@ -38,47 +35,29 @@ class MermaidLinkProvider
 {
   constructor(
     private readonly store: MermaidDiagramStore<vscode.Terminal>,
-    private readonly previewPort: MermaidPreviewPort,
+    private readonly previewPanel: MermaidPreviewPanel,
   ) {}
 
   provideTerminalLinks(
     context: vscode.TerminalLinkContext,
   ): MermaidTerminalLink[] {
-    const resolved = resolveTerminalLink(context.line, {
-      marked: () => this.store.marked(context.terminal),
-      matchingDirective: (directive, header) =>
-        this.store.matchingDirective(
-          context.terminal,
-          directive,
-          header,
-        ),
-    });
+    const resolved = this.store.resolveTerminalLink(
+      context.terminal,
+      context.line,
+    );
     return resolved
       ? [
           new MermaidTerminalLink(
             resolved.startIndex,
             resolved.length,
-            resolved.sources,
+            resolved.source,
           ),
         ]
       : [];
   }
 
   async handleTerminalLink(link: MermaidTerminalLink): Promise<void> {
-    // eslint-disable-next-line no-console
-    console.log(
-      '[MTUI] handleTerminalLink sources=',
-      link.sources.length,
-      'first=',
-      link.sources[0]?.slice(0, 80),
-    );
-    // Single-slot store guarantees one diagram per terminal; open it directly
-    // without prompting. The Picker path was debug-only and made the click
-    // experience feel like a diagnostic tool rather than a preview shortcut.
-    const source = link.sources.at(-1);
-    if (source) {
-      await openMermaidPreview(source, this.previewPort);
-    }
+    await this.previewPanel.show(link.source);
   }
 }
 
@@ -112,18 +91,13 @@ export function registerMermaidTuiPreview(
 ): void {
   const store = new MermaidDiagramStore<vscode.Terminal>();
   const previewPanel = new MermaidPreviewPanel(context.extensionUri);
-  const previewPort = createPreviewPort(previewPanel);
 
   try {
     context.subscriptions.push(
       previewPanel,
       vscode.window.onDidStartTerminalShellExecution((event) => {
         const commandLine = event.execution.commandLine.value;
-        // eslint-disable-next-line no-console
-        console.log('[MTUI] shell execution start:', commandLine);
         if (!isSupportedTuiCommand(commandLine)) {
-          // eslint-disable-next-line no-console
-          console.log('[MTUI] not a supported TUI, skip');
           return;
         }
 
@@ -141,7 +115,7 @@ export function registerMermaidTuiPreview(
         store.clear(terminal);
       }),
       vscode.window.registerTerminalLinkProvider(
-        new MermaidLinkProvider(store, previewPort),
+        new MermaidLinkProvider(store, previewPanel),
       ),
       vscode.languages.registerDocumentLinkProvider(
         { language: 'markdown' },
@@ -151,7 +125,7 @@ export function registerMermaidTuiPreview(
         OPEN_SOURCE_COMMAND,
         async (source: unknown) => {
           if (typeof source === 'string') {
-            await openMermaidPreview(source, previewPort);
+            await previewPanel.show(source);
           }
         },
       ),
@@ -164,10 +138,10 @@ export function registerMermaidTuiPreview(
           );
           return;
         }
-        await openMermaidPreview(diagram.source, previewPort);
+        await previewPanel.show(diagram.source);
       }),
       vscode.commands.registerCommand(OPEN_MARKDOWN_COMMAND, async () => {
-        await openActiveMarkdownDiagram(previewPort);
+        await openActiveMarkdownDiagram(previewPanel);
       }),
       vscode.commands.registerCommand(CLEAR_ACTIVE_COMMAND, async () => {
         const terminal = vscode.window.activeTerminal;
@@ -205,7 +179,7 @@ async function captureTerminalMermaidStream(
 }
 
 async function openActiveMarkdownDiagram(
-  previewPort: MermaidPreviewPort,
+  previewPanel: MermaidPreviewPanel,
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
@@ -229,19 +203,11 @@ async function openActiveMarkdownDiagram(
     return;
   }
 
-  await openMermaidPreview(block.source, previewPort);
+  await previewPanel.show(block.source);
 }
 
 function createSourceCommandURI(source: string): vscode.Uri {
   return vscode.Uri.parse(
     `command:${OPEN_SOURCE_COMMAND}?${encodeURIComponent(JSON.stringify([source]))}`,
   );
-}
-
-function createPreviewPort(
-  previewPanel: MermaidPreviewPanel,
-): MermaidPreviewPort {
-  return {
-    showPreview: async (source) => await previewPanel.show(source),
-  };
 }

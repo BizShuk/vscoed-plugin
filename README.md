@@ -65,12 +65,12 @@ Markdown ```mermaid code block
    - Codex／Claude TUI：按住 `Cmd` 並點擊 `flowchart`、
      `sequenceDiagram` 等圖型指令。
    - Claude TUI 額外顯示可點擊的 `mermaid` marker；Codex TUI 不顯示此 marker。
-   - 若同一個 terminal 有多張圖使用完全相同的 directive header，會先顯示圖表
-     選單；選取後才開啟預覽。
+   - 若同一個 terminal 有多張圖使用完全相同的 directive header，點擊時直接開啟
+     最近更新的一張，不顯示圖表選單。
 4. 也可從 Command Palette 執行
    `Mermaid TUI Preview: Open Latest Diagram`，開啟目前 terminal 最新偵測到的圖。
 5. 預覽開啟後，按住滑鼠左鍵拖曳圖表；使用滾輪或右上角按鈕進行 SVG
-   `viewBox` 縮放與重設。
+   `viewBox` 縮放與重設。預覽會保留原始 Mermaid source，包括 label 內的 `<br/>`。
 6. 一般 `.md` 檔可直接加入：
 
    ````markdown
@@ -89,6 +89,10 @@ Markdown ```mermaid code block
 | --- | -------------- | ------------- |
 | Claude | `⏺ mermaid` | 由 marker 取得後續縮排區塊 |
 | Codex | `• flowchart TD` | 直接辨識 Mermaid 圖型指令 |
+
+圖型指令對齊套件內建 Mermaid `11.16` renderer，支援
+`classDiagram-v2`、`flowchart-elk`、`architecture`、`treemap` 等 aliases。
+每個 terminal 依真正更新順序保留最近 `20` 張圖；相同 header 的不同圖不會互相覆寫。
 
 此功能不回讀既有 terminal scrollback，只監聽 extension 啟動後、具備 shell
 integration 的新 command execution。技術細節見

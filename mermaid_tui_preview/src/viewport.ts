@@ -36,27 +36,6 @@ export interface ViewportSize {
   height: number;
 }
 
-export interface SVGViewportElement {
-  setAttribute(name: string, value: string): void;
-  style: {
-    width: string;
-    height: string;
-    maxWidth: string;
-    maxHeight: string;
-  };
-}
-
-export function configureSVGElementForViewport(
-  svg: SVGViewportElement,
-): void {
-  svg.setAttribute('width', '100%');
-  svg.setAttribute('height', '100%');
-  svg.style.width = '100%';
-  svg.style.height = '100%';
-  svg.style.maxWidth = 'none';
-  svg.style.maxHeight = 'none';
-}
-
 export function createViewportState(): ViewportState {
   return {
     x: 0,
@@ -139,20 +118,21 @@ export function calculateSVGViewBox(
 ): SVGViewBox {
   const width = original.width / state.scale;
   const height = original.height / state.scale;
-  const unitsPerPixelX =
-    original.width / renderedSize.width / state.scale;
-  const unitsPerPixelY =
-    original.height / renderedSize.height / state.scale;
+  const unitsPerPixel =
+    Math.max(
+      original.width / renderedSize.width,
+      original.height / renderedSize.height,
+    ) / state.scale;
 
   return {
     minX:
       original.minX +
       (original.width - width) / 2 -
-      state.x * unitsPerPixelX,
+      state.x * unitsPerPixel,
     minY:
       original.minY +
       (original.height - height) / 2 -
-      state.y * unitsPerPixelY,
+      state.y * unitsPerPixel,
     width,
     height,
   };

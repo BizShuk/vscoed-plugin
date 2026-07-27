@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DetectedMermaidDiagram } from '../src/detector';
-import { captureMermaidStream } from '../src/capture';
-import { TerminalScreen } from '../src/terminalScreen';
+import {
+  captureMermaidStream,
+  TerminalScreen,
+} from '../src/terminal';
 
 async function* chunks(values: readonly string[]): AsyncIterable<string> {
   for (const value of values) {
@@ -123,5 +125,27 @@ Start(["開始 (Start)"]) --> Auth{"已登入?<br/>(Authenticated?)"}
       captureMermaidStream(failingStream, screen, () => undefined),
     ).rejects.toThrow('stream failed');
     expect(disposed).toBe(true);
+  });
+
+  it('does not write raw terminal frames to the console', async () => {
+    const log = vi
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
+    const screen = {
+      write: async () => [] as readonly string[],
+      dispose: () => undefined,
+    };
+
+    try {
+      await captureMermaidStream(
+        chunks(['secret terminal output']),
+        screen,
+        () => undefined,
+      );
+
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
   });
 });

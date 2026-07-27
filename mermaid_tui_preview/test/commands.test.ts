@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSupportedTuiCommand } from '../src/commands';
+import { isSupportedTuiCommand } from '../src/terminal';
 
 describe('isSupportedTuiCommand', () => {
   it.each([

@@ -2,29 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   beginViewportDrag,
   calculateSVGViewBox,
-  configureSVGElementForViewport,
   createViewportState,
   endViewportDrag,
   moveViewportDrag,
   resetViewport,
   zoomViewport,
 } from '../src/viewport';
-
-function createSVGElementStub() {
-  const attributes = new Map<string, string>();
-  return {
-    attributes,
-    style: {
-      width: '',
-      height: '',
-      maxWidth: '',
-      maxHeight: '',
-    },
-    setAttribute(name: string, value: string): void {
-      attributes.set(name, value);
-    },
-  };
-}
 
 describe('Mermaid preview viewport drag', () => {
   it('moves the graph while the left mouse button is held', () => {
@@ -123,22 +106,24 @@ describe('Mermaid preview viewport drag', () => {
     });
   });
 
-  it('removes Mermaid intrinsic sizing limits before filling the page', () => {
-    const svg = createSVGElementStub();
+  it('uses the uniform SVG scale when viewport aspect ratios differ', () => {
+    const state = {
+      ...createViewportState(),
+      x: 100,
+    };
 
-    configureSVGElementForViewport(svg);
-
-    expect(svg.attributes).toEqual(
-      new Map([
-        ['width', '100%'],
-        ['height', '100%'],
-      ]),
-    );
-    expect(svg.style).toMatchObject({
-      width: '100%',
-      height: '100%',
-      maxWidth: 'none',
-      maxHeight: 'none',
+    expect(
+      calculateSVGViewBox(
+        { minX: 0, minY: 0, width: 200, height: 400 },
+        state,
+        { width: 1000, height: 500 },
+      ),
+    ).toEqual({
+      minX: -80,
+      minY: 0,
+      width: 200,
+      height: 400,
     });
   });
+
 });

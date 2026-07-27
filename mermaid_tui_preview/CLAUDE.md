@@ -14,8 +14,7 @@ TerminalShellExecution.read()
   → TerminalScreen.write()
   → detectMermaidDiagrams()
   → MermaidDiagramStore.record()
-  → resolveTerminalLink()
-  → openMermaidPreview()
+  → MermaidDiagramStore.resolveTerminalLink()
   → MermaidPreviewPanel.show()
   → Mermaid SVG render + viewBox transform
 
@@ -29,15 +28,10 @@ Markdown TextDocument
 
 | 模組 | 職責 | 主要介面 |
 | ---- | ---- | -------- |
-| `src/commands.ts` | 判斷 command line 是否啟動 `codex`／`claudem`／Claude | `isSupportedTuiCommand()` |
-| `src/terminalScreen.ts` | 以 `@xterm/headless` 套用 ANSI cursor movement 與 redraw | `TerminalScreen` |
-| `src/terminalDimensions.ts` | 由 terminal process 的 PTY 取得實際 columns／rows | `resolveTerminalDimensions()` |
+| `src/terminal.ts` | 判斷 TUI command、探測 PTY dimensions、重建 ANSI 畫面並串接 capture | `isSupportedTuiCommand()`、`resolveTerminalDimensions()`、`TerminalScreen`、`captureMermaidStream()` |
 | `src/detector.ts` | 從重建畫面擷取 Mermaid 區塊與圖型指令 | `detectMermaidDiagrams()` |
-| `src/capture.ts` | 串接 raw stream、畫面重建與 detector | `captureMermaidStream()` |
-| `src/store.ts` | 依 terminal 快取最近 20 張圖並合併 partial render | `MermaidDiagramStore` |
-| `src/links.ts` | 將可見的 `mermaid` marker 或圖型指令解析成 link range | `resolveTerminalLink()` |
+| `src/store.ts` | 依 terminal 快取最近 20 張圖、合併 partial render 並解析 terminal link | `MermaidDiagramStore` |
 | `src/markdown.ts` | 解析 Markdown ` ```mermaid ` fenced code block 與游標選取 | `findMarkdownMermaidBlocks()` |
-| `src/preview.ts` | 正規化 source 並呼叫可測試 preview port | `openMermaidPreview()` |
 | `src/panel.ts` | 建立／重用 VS Code webview panel | `MermaidPreviewPanel` |
 | `src/webview.ts` | 產生具 CSP 與安全 source embedding 的 HTML | `createMermaidPreviewHTML()` |
 | `src/viewport.ts` | 左鍵拖曳、縮放與 SVG `viewBox` 的純狀態轉換 | `calculateSVGViewBox()` |
@@ -58,10 +52,13 @@ Markdown TextDocument
   使用實際 columns 以重現 soft wrap，rows 則至少保留 `120` 行以容納長圖。
 - preview panel 使用 module 內建的 Mermaid browser bundle，不依賴其他 VS Code
   extension；source 以 JSON data script 安全嵌入，Mermaid 使用 `securityLevel:
-  'strict'`。
+  'strict'`。preview 不重寫合法的 Mermaid markup，例如 `<br/>` 會原樣傳入 renderer。
+- capture 不輸出 raw terminal frame 或 command content；執行錯誤只由註冊層寫入
+  `console.error()`。
 - webview 預設啟用滑鼠左鍵拖曳，以 pointer capture 保證游標離開圖形後仍持續平移；
   滾輪與 toolbar 提供 `25%` 至 `400%` 縮放及 reset。平移與縮放只更新 SVG
-  `viewBox`，不以 CSS `scale()` 放大 rasterized composition layer。
+  `viewBox`，不以 CSS `scale()` 放大 rasterized composition layer；寬高比例不同時
+  使用單一等比例 (uniform) scale 換算 pointer movement。
 
 ## 偵測契約 (Detection Contract)
 
@@ -70,6 +67,9 @@ Markdown TextDocument
 - Claude TUI 以獨立 `mermaid` marker 開始，後續縮排行為圖的 source。
 - Codex TUI 會隱藏 Markdown fence 與 language marker，因此直接從
   `flowchart`、`sequenceDiagram`、`stateDiagram-v2` 等 Mermaid directive 開始。
+- directive catalog 對齊內建 Mermaid `11.16` renderer，包含
+  `classDiagram-v2`、`flowchart-elk`、`architecture`、`treemap`、
+  `railroad-ebnf-beta` 等 bundled aliases。
 - terminal link provider 會連結兩種 TUI 的 Mermaid directive；Claude 的
   `mermaid` marker 是額外入口，不是另一套必要關鍵字。
 - Markdown ` ```mermaid ` opening marker 會成為文件連結；游標位於 fenced block
@@ -83,10 +83,13 @@ Markdown TextDocument
   基準縮排時即結束，避免把後續 prose 併入 Mermaid source。
 - 每個 raw data chunk 會在 `CR`／`LF` 與 cursor-home／absolute-position redraw
   邊界建立中間 frame，避免長圖的起始 directive 在同一 chunk 內被覆蓋後才掃描。
-- partial stream 會先產生短 source；store 以同 directive 的 prefix 關係替換成較完整
-  source。同一個畫面掃描內同時存在的 prefix-related diagrams 則保留為不同圖。
+- 每個 terminal 使用最多 `20` 張圖的 ordered history；相同 source 再次出現會移至
+  最後並成為 `latest()`，相同 directive header 的不同 source 則同時保留。
+- partial stream 會先產生短 source；store 只在跨 frame 且 source 具有 prefix 關係時
+  替換成較完整 source。同一個畫面掃描內同時存在的 prefix-related diagrams 則保留
+  為不同圖。
 - terminal link 以完整 directive header（例如 `flowchart TD`）比對；若多張圖的
-  可見 header 完全相同，點擊後以 Quick Pick 選擇，不會自動取最近一張。
+  可見 header 完全相同，直接開啟最近更新的一張，不顯示 picker。
 
 ## 測試 (Tests)
 
@@ -111,5 +114,5 @@ PTY dimensions、soft wrap、cursor movement 與端對端擷取。
   fallback dimensions。command 執行期間若 terminal resize，該次 capture 不會重新
   probe。
 - terminal link API 不提供 scrollback row number；相同完整 header 或相同
-  `mermaid` marker 出現多次時，無法由點擊列自動判斷圖的位置，因此會顯示
-  Quick Pick 供使用者選擇。
+  `mermaid` marker 出現多次時，無法由點擊列自動判斷圖的位置，因此固定開啟
+  最近更新且符合該 link 的圖。

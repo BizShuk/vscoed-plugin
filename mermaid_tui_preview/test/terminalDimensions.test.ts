@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   resolveTerminalDimensions,
   type TerminalDimensionCommandRunner,
-} from '../src/terminalDimensions';
+} from '../src/terminal';
 
 describe('resolveTerminalDimensions', () => {
   it('reads the macOS PTY dimensions for a terminal process', async () => {

@@ -2,14 +2,12 @@ import mermaid from 'mermaid';
 import {
   beginViewportDrag,
   calculateSVGViewBox,
-  configureSVGElementForViewport,
   createViewportState,
   endViewportDrag,
   moveViewportDrag,
   resetViewport,
   zoomViewport,
   type SVGViewBox,
-  type ViewportSize,
 } from '../src/viewport.js';
 
 const viewport = requiredElement('viewport');
@@ -23,7 +21,6 @@ const resetButton = requiredElement('reset');
 let viewportState = createViewportState();
 let svgElement: SVGSVGElement | undefined;
 let originalViewBox: SVGViewBox | undefined;
-let renderedSize: ViewportSize | undefined;
 
 viewport.addEventListener('pointerdown', (event) => {
   const next = beginViewportDrag(viewportState, {
@@ -85,7 +82,6 @@ viewport.addEventListener(
 );
 
 window.addEventListener('resize', () => {
-  updateRenderedSize();
   applySVGViewport();
 });
 
@@ -133,8 +129,12 @@ async function renderDiagram(): Promise<void> {
     }
 
     originalViewBox = readSVGViewBox(svgElement);
-    configureSVGElementForViewport(svgElement);
-    updateRenderedSize();
+    svgElement.setAttribute('width', '100%');
+    svgElement.setAttribute('height', '100%');
+    svgElement.style.width = '100%';
+    svgElement.style.height = '100%';
+    svgElement.style.maxWidth = 'none';
+    svgElement.style.maxHeight = 'none';
     applySVGViewport();
   } catch (caught) {
     viewport.style.display = 'none';
@@ -144,27 +144,19 @@ async function renderDiagram(): Promise<void> {
   }
 }
 
-function updateRenderedSize(): void {
+function applySVGViewport(): void {
   if (!svgElement || !originalViewBox) {
     return;
   }
 
-  const bounds = svgElement.getBoundingClientRect();
-  renderedSize = {
-    width: bounds.width || originalViewBox.width,
-    height: bounds.height || originalViewBox.height,
-  };
-}
-
-function applySVGViewport(): void {
-  if (!svgElement || !originalViewBox || !renderedSize) {
-    return;
-  }
-
+  const bounds = viewport.getBoundingClientRect();
   const viewBox = calculateSVGViewBox(
     originalViewBox,
     viewportState,
-    renderedSize,
+    {
+      width: bounds.width || originalViewBox.width,
+      height: bounds.height || originalViewBox.height,
+    },
   );
   svgElement.setAttribute(
     'viewBox',

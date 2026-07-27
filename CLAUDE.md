@@ -78,7 +78,7 @@ vscode-plugin-experiment/
 │
 └── mermaid_tui_preview/      # [Plugin Feature 2] TUI／Markdown Mermaid 互動式預覽
     ├── CLAUDE.md             # mermaid_tui_preview 內部技術脈絡
-    ├── src/                  # capture/detector/store/link/dimensions/panel/viewport/register
+    ├── src/                  # terminal/detector/store/markdown/panel/viewport/register
     ├── test/                 # ANSI、detector、store、drag 與 webview 測試
     └── webview/              # browser entry，負責 Mermaid render 與 pointer event
 ```

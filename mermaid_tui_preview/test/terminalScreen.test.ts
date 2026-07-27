@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { TerminalScreen } from '../src/terminalScreen';
+import { TerminalScreen } from '../src/terminal';
 
 const screens: TerminalScreen[] = [];
 
