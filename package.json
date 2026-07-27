@@ -23,7 +23,8 @@
     "onCommand:logDoctor.showOutput",
     "onCommand:logDoctor.publish",
     "onCommand:mermaidTuiPreview.openLatest",
-    "onCommand:mermaidTuiPreview.openMarkdown"
+    "onCommand:mermaidTuiPreview.openMarkdown",
+    "onCommand:mermaidTuiPreview.clearActive"
   ],
   "contributes": {
     "commands": [
@@ -46,6 +47,11 @@
       {
         "command": "mermaidTuiPreview.openMarkdown",
         "title": "Mermaid TUI Preview: Open Markdown Diagram"
+      },
+      {
+        "command": "mermaidTuiPreview.clearActive",
+        "title": "Mermaid TUI Preview: Clear Active Cache",
+        "category": "Mermaid"
       }
     ],
     "configuration": {

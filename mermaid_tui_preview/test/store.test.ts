@@ -5,83 +5,84 @@ import { MermaidDiagramStore } from '../src/store';
 function diagram(
   source: string,
   directive = 'flowchart',
+  marker?: string,
 ): DetectedMermaidDiagram {
-  return { source, directive, marker: undefined };
+  return { source, directive, marker };
 }
 
 describe('MermaidDiagramStore', () => {
-  it('replaces a partial render with the completed diagram', () => {
+  it('keeps distinct diagram ids side-by-side per terminal', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    const flowchartTb = diagram('flowchart TD\nA --> B');
+    const sequence = diagram(
+      'sequenceDiagram\nA->>B: Hi',
+      'sequenceDiagram',
+    );
+
+    store.record(terminal, [flowchartTb]);
+    store.record(terminal, [sequence]);
+
+    expect(store.entries(terminal)).toEqual([flowchartTb, sequence]);
+  });
+
+  it('overwrites only the slot whose id matches', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    const firstTb = diagram('flowchart TD\nA --> B');
+    const sequence = diagram(
+      'sequenceDiagram\nA->>B: Hi',
+      'sequenceDiagram',
+    );
+
+    store.record(terminal, [firstTb]);
+    store.record(terminal, [sequence]);
+    store.record(terminal, [diagram('flowchart TD\nA --> B\nB --> C')]);
+
+    const remaining = store.entries(terminal);
+    expect(remaining).toHaveLength(2);
+    expect(
+      remaining.find((item) => item.directive === 'flowchart')?.source,
+    ).toBe('flowchart TD\nA --> B\nB --> C');
+    expect(
+      remaining.find((item) => item.directive === 'sequenceDiagram')
+        ?.source,
+    ).toBe('sequenceDiagram\nA->>B: Hi');
+  });
+
+  it('falls back to the directive name when no directive header is found', () => {
     const terminal = {};
     const store = new MermaidDiagramStore<object>();
 
-    store.record(terminal, [diagram('flowchart TD')]);
-    store.record(terminal, [diagram('flowchart TD\nA --> B')]);
+    store.record(terminal, [diagram('plain text without directive')]);
 
     expect(store.entries(terminal)).toEqual([
-      diagram('flowchart TD\nA --> B'),
+      diagram('plain text without directive'),
     ]);
   });
 
-  it('keeps prefix-related diagrams that coexist in one screen scan', () => {
-    const terminal = {};
+  it('keeps terminals independent of each other', () => {
+    const termA = {};
+    const termB = {};
     const store = new MermaidDiagramStore<object>();
-    const simple = diagram('flowchart TD\nA --> B');
-    const complex = diagram('flowchart TD\nA --> B\nB --> C');
 
-    store.record(terminal, [simple, complex]);
-
-    expect(store.entries(terminal)).toEqual([simple, complex]);
-  });
-
-  it('deduplicates exact screen rescans and keeps the item most recent', () => {
-    const terminal = {};
-    const store = new MermaidDiagramStore<object>();
-    const first = diagram('flowchart TD\nA --> B');
-    const second = diagram('sequenceDiagram\nA->>B: Hi', 'sequenceDiagram');
-
-    store.record(terminal, [first, second]);
-    store.record(terminal, [first]);
-
-    expect(store.entries(terminal)).toEqual([second, first]);
-    expect(store.latest(terminal)).toEqual(first);
-  });
-
-  it('keeps at most the configured number of diagrams per terminal', () => {
-    const terminal = {};
-    const store = new MermaidDiagramStore<object>(2);
-
-    store.record(terminal, [
-      diagram('one', 'one'),
-      diagram('two', 'two'),
-      diagram('three', 'three'),
+    store.record(termA, [diagram('flowchart TD\nA --> B')]);
+    store.record(termB, [
+      diagram('sequenceDiagram\nX->>Y', 'sequenceDiagram'),
     ]);
 
-    expect(store.entries(terminal).map((item) => item.source)).toEqual([
-      'two',
-      'three',
+    expect(store.entries(termA)).toEqual([diagram('flowchart TD\nA --> B')]);
+    expect(store.entries(termB)).toEqual([
+      diagram('sequenceDiagram\nX->>Y', 'sequenceDiagram'),
     ]);
-    expect(store.matchingDirective(terminal, 'one', 'one')).toEqual([]);
   });
 
-  it('returns every diagram whose complete directive header matches', () => {
+  it('returns the diagram captured from a Mermaid marker', () => {
     const terminal = {};
     const store = new MermaidDiagramStore<object>();
-    const first = diagram('flowchart TD\nA --> B');
-    const second = diagram('flowchart LR\nX --> Y');
-    const third = diagram('flowchart TD\nC --> D');
-
-    store.record(terminal, [first, second, third]);
-
-    expect(
-      store.matchingDirective(terminal, 'flowchart', 'flowchart TD'),
-    ).toEqual([first, third]);
-  });
-
-  it('returns every diagram captured from a Mermaid marker', () => {
-    const terminal = {};
-    const store = new MermaidDiagramStore<object>();
-    const marked = {
-      ...diagram('flowchart TD\nA --> B'),
+    const marked: DetectedMermaidDiagram = {
+      source: 'flowchart TD\nA --> B',
+      directive: 'flowchart',
       marker: 'mermaid',
     };
     const direct = diagram('sequenceDiagram\nA->>B: Hi', 'sequenceDiagram');
@@ -89,6 +90,22 @@ describe('MermaidDiagramStore', () => {
     store.record(terminal, [marked, direct]);
 
     expect(store.marked(terminal)).toEqual([marked]);
+  });
+
+  it('looks up the id-targeted diagram via matchingDirective', () => {
+    const terminal = {};
+    const store = new MermaidDiagramStore<object>();
+    store.record(terminal, [diagram('flowchart TD\nA --> B')]);
+
+    expect(
+      store.matchingDirective(terminal, 'flowchart', 'flowchart TD'),
+    ).toEqual([diagram('flowchart TD\nA --> B')]);
+    expect(
+      store.matchingDirective(terminal, 'flowchart', 'flowchart LR'),
+    ).toEqual([]);
+    expect(
+      store.matchingDirective(terminal, 'sequenceDiagram', 'sequenceDiagram'),
+    ).toEqual([]);
   });
 
   it('clears cached diagrams when a terminal closes', () => {

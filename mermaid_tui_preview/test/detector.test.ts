@@ -138,6 +138,29 @@ describe('detectMermaidDiagrams', () => {
     ]);
   });
 
+  it('strips stray Markdown fences following a bare mermaid marker', () => {
+    // Claude TUI sometimes keeps the ```mermaid fence characters visible in
+    // its rendered stream. A bare `mermaid` marker followed by such a fenced
+    // block must extract only the diagram body, never the fence lines.
+    const diagrams = detectMermaidDiagrams([
+      'mermaid',
+      '```mermaid',
+      'flowchart LR',
+      '    A --> B --> C',
+      '```',
+      '',
+      'prose prose prose',
+    ]);
+
+    expect(diagrams).toEqual([
+      {
+        source: 'flowchart LR\n    A --> B --> C',
+        directive: 'flowchart',
+        marker: 'mermaid',
+      },
+    ]);
+  });
+
   it('waits for source after a marker-only partial render', () => {
     expect(detectMermaidDiagrams(['⏺ mermaid'])).toEqual([]);
   });

@@ -149,6 +149,18 @@ function extractFollowing(
 
   for (let index = first; index < lines.length; index += 1) {
     const line = lines[index] ?? '';
+    // Markdown fence artifacts (``` … ```) leak into non-fenced TUI output
+    // when the upstream renderer keeps the fence characters in the visible
+    // stream. Skip leading fences before any content has been collected, and
+    // stop at the closing fence once the diagram body has started — never fold
+    // the fence characters into the diagram source.
+    if (!fenced && /^\s*`{3,}/u.test(line)) {
+      if (rawLines.length === 0) {
+        continue;
+      }
+      endIndex = index - 1;
+      break;
+    }
     if (fenced && /^\s*`{3,}\s*$/.test(line)) {
       endIndex = index;
       break;

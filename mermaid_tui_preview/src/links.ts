@@ -52,21 +52,6 @@ export function resolveTerminalLink(
   return undefined;
 }
 
-export async function selectTerminalLinkSource(
-  sources: readonly string[],
-  choose: (
-    candidates: readonly string[],
-  ) => Promise<string | undefined>,
-): Promise<string | undefined> {
-  if (sources.length === 1) {
-    return sources[0];
-  }
-  if (sources.length > 1) {
-    return await choose(sources);
-  }
-  return undefined;
-}
-
 function isTuiPrefix(prefix: string): boolean {
   return /^[\s•●◦⏺]*$/u.test(prefix);
 }

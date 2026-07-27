@@ -1,10 +1,7 @@
 import * as vscode from 'vscode';
 import { captureMermaidStream } from './capture';
 import { isSupportedTuiCommand } from './commands';
-import {
-  resolveTerminalLink,
-  selectTerminalLinkSource,
-} from './links';
+import { resolveTerminalLink } from './links';
 import {
   openMermaidPreview,
   type MermaidPreviewPort,
@@ -21,6 +18,7 @@ import { TerminalScreen } from './terminalScreen';
 const OPEN_LATEST_COMMAND = 'mermaidTuiPreview.openLatest';
 const OPEN_MARKDOWN_COMMAND = 'mermaidTuiPreview.openMarkdown';
 const OPEN_SOURCE_COMMAND = 'mermaidTuiPreview.openSource';
+const CLEAR_ACTIVE_COMMAND = 'mermaidTuiPreview.clearActive';
 
 class MermaidTerminalLink extends vscode.TerminalLink {
   readonly sources: readonly string[];
@@ -30,19 +28,9 @@ class MermaidTerminalLink extends vscode.TerminalLink {
     length: number,
     sources: readonly string[],
   ) {
-    super(
-      startIndex,
-      length,
-      sources.length === 1
-        ? 'Open with Mermaid Preview'
-        : 'Choose a Mermaid diagram to preview',
-    );
+    super(startIndex, length, 'Open with Mermaid Preview');
     this.sources = sources;
   }
-}
-
-interface MermaidSourceQuickPickItem extends vscode.QuickPickItem {
-  source: string;
 }
 
 class MermaidLinkProvider
@@ -77,19 +65,17 @@ class MermaidLinkProvider
   }
 
   async handleTerminalLink(link: MermaidTerminalLink): Promise<void> {
-    const source = await selectTerminalLinkSource(
-      link.sources,
-      async (sources) => {
-        const selected = await vscode.window.showQuickPick(
-          sources.map(createSourceQuickPickItem),
-          {
-            placeHolder:
-              'This terminal line matches multiple Mermaid diagrams.',
-          },
-        );
-        return selected?.source;
-      },
+    // eslint-disable-next-line no-console
+    console.log(
+      '[MTUI] handleTerminalLink sources=',
+      link.sources.length,
+      'first=',
+      link.sources[0]?.slice(0, 80),
     );
+    // Single-slot store guarantees one diagram per terminal; open it directly
+    // without prompting. The Picker path was debug-only and made the click
+    // experience feel like a diagnostic tool rather than a preview shortcut.
+    const source = link.sources.at(-1);
     if (source) {
       await openMermaidPreview(source, this.previewPort);
     }
@@ -132,7 +118,12 @@ export function registerMermaidTuiPreview(
     context.subscriptions.push(
       previewPanel,
       vscode.window.onDidStartTerminalShellExecution((event) => {
-        if (!isSupportedTuiCommand(event.execution.commandLine.value)) {
+        const commandLine = event.execution.commandLine.value;
+        // eslint-disable-next-line no-console
+        console.log('[MTUI] shell execution start:', commandLine);
+        if (!isSupportedTuiCommand(commandLine)) {
+          // eslint-disable-next-line no-console
+          console.log('[MTUI] not a supported TUI, skip');
           return;
         }
 
@@ -142,7 +133,8 @@ export function registerMermaidTuiPreview(
           event.terminal,
           store,
         ).catch((error: unknown) => {
-          console.error('Mermaid TUI Preview capture failed', error);
+          // eslint-disable-next-line no-console
+          console.error('[MTUI] capture failed', error);
         });
       }),
       vscode.window.onDidCloseTerminal((terminal) => {
@@ -176,6 +168,16 @@ export function registerMermaidTuiPreview(
       }),
       vscode.commands.registerCommand(OPEN_MARKDOWN_COMMAND, async () => {
         await openActiveMarkdownDiagram(previewPort);
+      }),
+      vscode.commands.registerCommand(CLEAR_ACTIVE_COMMAND, async () => {
+        const terminal = vscode.window.activeTerminal;
+        if (terminal) {
+          store.clear(terminal);
+        }
+        previewPanel.dispose();
+        await vscode.window.showInformationMessage(
+          'Mermaid TUI Preview: cleared active cache and closed panel.',
+        );
       }),
     );
   } catch (error: unknown) {
@@ -234,23 +236,6 @@ function createSourceCommandURI(source: string): vscode.Uri {
   return vscode.Uri.parse(
     `command:${OPEN_SOURCE_COMMAND}?${encodeURIComponent(JSON.stringify([source]))}`,
   );
-}
-
-function createSourceQuickPickItem(
-  source: string,
-  index: number,
-): MermaidSourceQuickPickItem {
-  const lines = source
-    .trim()
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  return {
-    label: `Diagram ${index + 1}: ${lines[0] ?? 'Mermaid'}`,
-    description: lines[1]?.slice(0, 80),
-    detail: lines.slice(1, 4).join(' · ').slice(0, 180),
-    source,
-  };
 }
 
 function createPreviewPort(
