@@ -3,6 +3,7 @@
   "displayName": "VSCode Plugin Experiment",
   "description": "Multi-feature VSCode extension experiment: Log Doctor and Mermaid TUI Preview",
   "version": "0.4.0",
+  "private": true,
   "publisher": "shuk",
   "license": "Apache-2.0",
   "repository": {
@@ -144,16 +145,16 @@
     }
   },
   "scripts": {
-    "clean": "rm -f *.vsix",
     "vscode:prepublish": "npm run build",
-    "build": "npm run clean && npm install && tsc -p . --noEmit && node esbuild.config.mjs",
-    "watch": "tsc -p . --noEmit --watch",
-    "typecheck": "tsc -p . --noEmit",
+    "dev": "tsc -p . --noEmit --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "vsce package",
-    "install:antigravity": "bash scripts/install-antigravity-extension.sh",
-    "lint": "tsc -p . --noEmit"
+    "build": "npm install && tsc -p . --noEmit && node esbuild.config.mjs",
+    "build:vsix": "rm -f *.vsix && npm run build && npx vsce package",
+    "deploy": "npm run build:vsix && bash scripts/install-antigravity-extension.sh",
+    "lint": "tsc -p . --noEmit",
+    "clean": "rm -rf out node_modules *.vsix",
+    "ci": "npm run lint && npm run test && npm run build"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
