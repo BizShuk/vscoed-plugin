@@ -1,0 +1,35 @@
+# TODO
+
+> 本清單由 2026-08-10 的 submodule 一致性稽核建立。條目均有可查證的依據，
+> 但`優先序尚未排定` — 請依實際需求增刪。
+
+## 命名 (Naming)
+
+- [ ] repo 與目錄名 `vscoed-plugin` 是 `vscode` 的拼字錯誤。
+      package name 又是第三個名字 `vscode-plugin-experiment`。
+      三者收斂為一個名字，remote repo 需同步改名。
+
+## 版面庫存 (Repository Hygiene)
+
+- [ ] `vscode-plugin-experiment-0.4.0.vsix` 留在工作目錄。確認是否該進
+      `.gitignore`（建置產物不應留在工作區干擾 `git status`）。
+- [ ] `test.md` 與 `tmp/process_table.md` 是`已被追蹤`的檔案。
+      前者看起來是 Mermaid preview 的測試素材 — 若是，應移入
+      `mermaid_tui_preview/test/` 並正名；後者若是實例資料，
+      依全域慣例 `tmp/` 不該進版控。
+
+## 打包 (Packaging)
+
+- [ ] 確認 `.vscodeignore` `沒有`排除 `node_modules/` —
+      排除它會讓 production dependencies 一併被濾掉，
+      VSIX 安裝後 activate 時噴 `Cannot find module`。
+- [ ] 確認 `.vscodeignore` `沒有`排除 `LICENSE` —
+      排除它會讓 vsce 的 LicenseProcessor 找不到授權檔而跳 `[y/N]` 警告，
+      Marketplace 上架也會被擋。
+
+## 結構 (Structure)
+
+- [ ] `plans/2026-07-21-restore-log-doctor-folder.md` 的 folder-as-feature
+      佈局已落地（`log_doctor/`、`mermaid_tui_preview/` 各自持有 `src/`、
+      `test/`、`CLAUDE.md`），root `src/extension.ts` 作為單一 manifest 聚合點。
+      確認計畫已全數完成後，把該檔從 `plans/` 移入 `docs/specs/`。
