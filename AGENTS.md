@@ -54,7 +54,7 @@ IIFE (`out/mermaid_tui_preview/webview.js`)。Extension Host bundle 把 `vscode`
 ```
 vscode-plugin-experiment/
 ├── README.md                 # 專案總覽 (打包/安裝/發佈流程)
-├── CLAUDE.md                 # 技術脈絡 (本檔)
+├── AGENTS.md                 # 技術脈絡 (本檔)
 ├── package.json              # root VSCode extension manifest + npm 入口
 ├── src/                      # root Extension Host 進入點 (orchestrator)
 │   └── extension.ts          # export activate/deactivate;呼叫各 feature 的 register*
@@ -71,13 +71,13 @@ vscode-plugin-experiment/
 ├── plans/                    # 跨模組歷史規劃文件
 │
 ├── log_doctor/               # [Plugin Feature 1] LLM 自動修復診斷 (sub-feature)
-│   ├── CLAUDE.md
+│   ├── AGENTS.md
 │   ├── src/
 │   ├── test/
 │   └── plans/
 │
 └── mermaid_tui_preview/      # [Plugin Feature 2] TUI／Markdown Mermaid 互動式預覽
-    ├── CLAUDE.md             # mermaid_tui_preview 內部技術脈絡
+    ├── AGENTS.md             # mermaid_tui_preview 內部技術脈絡
     ├── src/                  # terminal/detector/store/markdown/panel/viewport/register
     ├── test/                 # ANSI、detector、store、drag 與 webview 測試
     └── webview/              # browser entry，負責 Mermaid render 與 pointer event
