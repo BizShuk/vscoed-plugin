@@ -1,5 +1,5 @@
 {
-  "name": "vscode-plugin-experiment",
+  "name": "vscoed-plugin",
   "displayName": "VSCode Plugin Experiment",
   "description": "Multi-feature VSCode extension experiment: Log Doctor and Mermaid TUI Preview",
   "version": "0.4.0",
